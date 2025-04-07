@@ -21,7 +21,31 @@ document.addEventListener('DOMContentLoaded', () => {
   hitRegionContainer.style.pointerEvents = 'none'; // Start with no hit regions
   previewContainer.appendChild(hitRegionContainer);
   
+  // Create an initial instructions element
+  const instructionsElement = document.createElement('div');
+  instructionsElement.id = 'instructions';
+  instructionsElement.className = 'instructions';
+  instructionsElement.innerHTML = `
+    <h2>Cutout Previewer</h2>
+    <p>This is the transparent preview window.</p>
+    <p>Select PNG cutouts from the control window to display them here.</p>
+    <ul>
+      <li><strong>Drag:</strong> Move cutouts by clicking and dragging</li>
+      <li><strong>Scroll:</strong> Resize cutouts</li>
+      <li><strong>M key:</strong> Mirror cutout horizontally</li>
+      <li><strong>W key:</strong> Remove cutout</li>
+    </ul>
+  `;
+  instructionsElement.style.display = 'none'; // Hidden by default
+  previewContainer.appendChild(instructionsElement);
+  
+  ipcRenderer.on('show-initial-instructions', () => {
+    instructionsElement.style.display = 'block';
+  });
+  
+  // Hide instructions when a cutout is added
   ipcRenderer.on('add-cutout', (event, cutoutPath) => {
+    instructionsElement.style.display = 'none';
     addCutout(cutoutPath);
   });
   
@@ -41,6 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     img.src = `file://${cutoutPath}`;
     img.draggable = false;
     
+    // Add loading indicator
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.textContent = 'Loading...';
+    
+    cutoutElement.appendChild(loadingIndicator);
     cutoutElement.appendChild(img);
     previewContainer.appendChild(cutoutElement);
     
@@ -66,23 +96,30 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     cutouts.push(cutout);
-    prepareTransparencyDetection(cutout);
-    setActiveCutout(cutout);
+    
+    img.onload = () => {
+      loadingIndicator.remove();
+      prepareTransparencyDetection(cutout);
+      setActiveCutout(cutout);
+    };
+    
+    img.onerror = () => {
+      loadingIndicator.textContent = 'Error loading image';
+      console.error(`Failed to load image: ${cutoutPath}`);
+    };
     
     setupCutoutEventListeners(cutout);
   }
   
   function prepareTransparencyDetection(cutout) {
-    cutout.img.onload = () => {
-      cutout.canvas = document.createElement('canvas');
-      cutout.ctx = cutout.canvas.getContext('2d', { willReadFrequently: true });
-      cutout.canvas.width = cutout.img.naturalWidth;
-      cutout.canvas.height = cutout.img.naturalHeight;
-      cutout.ctx.drawImage(cutout.img, 0, 0);
+    cutout.canvas = document.createElement('canvas');
+    cutout.ctx = cutout.canvas.getContext('2d', { willReadFrequently: true });
+    cutout.canvas.width = cutout.img.naturalWidth;
+    cutout.canvas.height = cutout.img.naturalHeight;
+    cutout.ctx.drawImage(cutout.img, 0, 0);
       
-      // Now that we have the image data, update the hit region
-      updateHitRegion(cutout);
-    };
+    // Now that we have the image data, update the hit region
+    updateHitRegion(cutout);
   }
   
   function updateHitRegion(cutout) {
@@ -184,10 +221,14 @@ document.addEventListener('DOMContentLoaded', () => {
     pixelX = Math.max(0, Math.min(cutout.canvas.width - 1, pixelX));
     const pixelY = Math.max(0, Math.min(cutout.canvas.height - 1, scaledY));
     
-    const pixelData = cutout.ctx.getImageData(pixelX, pixelY, 1, 1).data;
-    const alpha = pixelData[3];
-    
-    return alpha < 50;
+    try {
+      const pixelData = cutout.ctx.getImageData(pixelX, pixelY, 1, 1).data;
+      const alpha = pixelData[3];
+      return alpha < 50;
+    } catch (e) {
+      console.error('Error checking transparency:', e);
+      return false;
+    }
   }
   
   function setActiveCutout(cutout) {
@@ -223,6 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
         activeCutout = null;
         // Reset the interactive region when all cutouts are removed
         ipcRenderer.send('update-interactive-region', null);
+        // Show instructions again when all cutouts are removed
+        instructionsElement.style.display = 'block';
       }
     }
   }
