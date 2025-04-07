@@ -14,15 +14,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   function updateCutoutList(cutouts) {
+    // Clear the existing list
     cutoutList.innerHTML = '';
     
-    if (cutouts.length === 0) {
+    if (!cutouts || cutouts.length === 0) {
       const emptyState = document.createElement('div');
       emptyState.className = 'empty-state';
       emptyState.textContent = 'No PNG files found in the selected folder';
       cutoutList.appendChild(emptyState);
       return;
     }
+    
+    // Debug log to see what we're getting
+    console.log('Received cutouts:', cutouts);
     
     cutouts.forEach(cutout => {
       const cutoutItem = document.createElement('div');
@@ -47,4 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
       cutoutList.appendChild(cutoutItem);
     });
   }
+  
+  // Request the initial list of cutouts when the app starts
+  ipcRenderer.send('request-initial-cutouts');
 });
