@@ -8,22 +8,29 @@
 <body>
   <div class="header">
     <h1>Cutout Previewer</h1>
-    <button id="selectFolder">Select Folder</button>
+    <button id="selectFolder">Select PNG Folder</button>
   </div>
   
-  <div class="cutout-list" id="cutoutList">
-    <div class="empty-state">
-      Select a folder containing PNG cutouts
+  <div class="cutout-list-container">
+    <div class="cutout-list-header">Available Cutouts</div>
+    <div class="cutout-list" id="cutoutList">
+      <div class="empty-state">
+        Select a folder containing PNG cutouts
+      </div>
     </div>
   </div>
   
   <div class="footer">
     <div class="help">
-      <h3>Shortcuts</h3>
+      <h3>Preview Window Shortcuts</h3>
       <p>Drag: Move cutout</p>
       <p>Scroll: Resize cutout</p>
       <p>M: Mirror cutout</p>
       <p>W: Remove cutout</p>
+    </div>
+    <div class="info">
+      <p>Click on any PNG image above to add it to the preview window.</p>
+      <p>The preview window is transparent and can be positioned over any application.</p>
     </div>
   </div>
   
