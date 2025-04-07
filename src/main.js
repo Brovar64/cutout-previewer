@@ -43,7 +43,10 @@ function createPreviewWindow() {
 
   previewWindow.loadFile(path.join(__dirname, 'preview.html'));
   
-  previewWindow.setIgnoreMouseEvents(false);
+  // Set ignore mouse events with forwarding
+  // This allows clicks to pass through transparent areas
+  // while still capturing events on non-transparent areas
+  previewWindow.setIgnoreMouseEvents(true, { forward: true });
 }
 
 app.whenReady().then(() => {
@@ -104,12 +107,25 @@ ipcMain.on('add-cutout', (event, cutoutPath) => {
   previewWindow.webContents.send('add-cutout', cutoutPath);
 });
 
-ipcMain.on('update-cursor', (event, isOverDraggable) => {
+// Listen for interactive regions updates from the renderer
+ipcMain.on('update-interactive-region', (event, region) => {
   if (!previewWindow) return;
   
-  if (isOverDraggable) {
-    previewWindow.setIgnoreMouseEvents(false);
-  } else {
-    previewWindow.setIgnoreMouseEvents(false, { forward: true });
+  // If we receive an empty region, reset to click-through mode
+  if (!region || region.width === 0 || region.height === 0) {
+    previewWindow.setIgnoreMouseEvents(true, { forward: true });
+    return;
   }
+  
+  // Otherwise, use the specified region
+  previewWindow.setIgnoreMouseEvents(true, { 
+    forward: true,
+    // Define the region where mouse events are not ignored
+    region: {
+      x: Math.floor(region.x),
+      y: Math.floor(region.y),
+      width: Math.ceil(region.width),
+      height: Math.ceil(region.height)
+    }
+  });
 });
