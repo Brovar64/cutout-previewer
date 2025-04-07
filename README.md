@@ -21,6 +21,7 @@ A specialized desktop application built with Electron that allows users (primari
   - Detect transparent pixels in PNG images
   - Only allow dragging when clicking on non-transparent parts
   - Prevent accidental movement when clicking on transparent areas
+  - Enhanced with Electron's setIgnoreMouseEvents with region forwarding
 
 - **Image Manipulation**
   - **Dragging**: Move cutouts by clicking and dragging non-transparent areas
@@ -28,6 +29,16 @@ A specialized desktop application built with Electron that allows users (primari
   - **Mirroring**: Press 'M' key to horizontally flip cutouts
   - **Removal**: Press 'W' key to remove cutouts from screen
   - **Z-indexing**: Automatically brings cutouts to front when clicked
+
+## Technical Implementation
+
+The application uses advanced techniques to handle transparency:
+
+- Leverages Electron's `setIgnoreMouseEvents()` with `forward` option
+- Creates interactive hit regions that match non-transparent areas of PNGs
+- Updates interactive regions dynamically when dragging, scaling, or flipping
+- Uses canvas to detect transparent pixels in PNG images
+- Advanced region-based mouse event handling
 
 ## Development
 
