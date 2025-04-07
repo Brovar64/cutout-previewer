@@ -10,17 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let dragOffsetX = 0;
   let dragOffsetY = 0;
   
-  // Create a wrapper div for interactive elements that will become "hitRegions"
-  const hitRegionContainer = document.createElement('div');
-  hitRegionContainer.id = 'hitRegionContainer';
-  hitRegionContainer.style.position = 'absolute';
-  hitRegionContainer.style.top = '0';
-  hitRegionContainer.style.left = '0';
-  hitRegionContainer.style.width = '100%';
-  hitRegionContainer.style.height = '100%';
-  hitRegionContainer.style.pointerEvents = 'none'; // Start with no hit regions
-  previewContainer.appendChild(hitRegionContainer);
-  
   // Create an initial instructions element
   const instructionsElement = document.createElement('div');
   instructionsElement.id = 'instructions';
@@ -36,14 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <li><strong>W key:</strong> Remove cutout</li>
     </ul>
   `;
-  instructionsElement.style.display = 'none'; // Hidden by default
   previewContainer.appendChild(instructionsElement);
   
-  ipcRenderer.on('show-initial-instructions', () => {
-    instructionsElement.style.display = 'block';
-  });
-  
-  // Hide instructions when a cutout is added
   ipcRenderer.on('add-cutout', (event, cutoutPath) => {
     instructionsElement.style.display = 'none';
     addCutout(cutoutPath);
@@ -74,20 +57,10 @@ document.addEventListener('DOMContentLoaded', () => {
     cutoutElement.appendChild(img);
     previewContainer.appendChild(cutoutElement);
     
-    // Create hitRegion element - this will be the clickable/interactive area
-    const hitRegion = document.createElement('div');
-    hitRegion.className = 'hit-region';
-    hitRegion.id = `hit-${cutoutId}`;
-    hitRegion.style.position = 'absolute';
-    hitRegion.style.zIndex = lastZIndex;
-    hitRegion.style.pointerEvents = 'auto'; // Make this element interactive
-    hitRegionContainer.appendChild(hitRegion);
-    
     const cutout = {
       id: cutoutId,
       element: cutoutElement,
       img: img,
-      hitRegion: hitRegion,
       path: cutoutPath,
       scale: 1,
       isFlipped: false,
@@ -117,37 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
     cutout.canvas.width = cutout.img.naturalWidth;
     cutout.canvas.height = cutout.img.naturalHeight;
     cutout.ctx.drawImage(cutout.img, 0, 0);
-      
-    // Now that we have the image data, update the hit region
-    updateHitRegion(cutout);
-  }
-  
-  function updateHitRegion(cutout) {
-    // Get the bounding rect of the image to position the hit region
-    const rect = cutout.element.getBoundingClientRect();
-    
-    // Adjust hit region to match exact shape of non-transparent parts
-    cutout.hitRegion.style.left = `${rect.left}px`;
-    cutout.hitRegion.style.top = `${rect.top}px`;
-    cutout.hitRegion.style.width = `${rect.width}px`;
-    cutout.hitRegion.style.height = `${rect.height}px`;
-    
-    // Create a CSS clip-path to match non-transparent areas
-    // This would require more complex calculations in a real app,
-    // but for now we'll use a basic rectangular shape
-    
-    // Inform main process of the hit region 
-    ipcRenderer.send('update-interactive-region', {
-      x: rect.left,
-      y: rect.top,
-      width: rect.width, 
-      height: rect.height
-    });
   }
   
   function setupCutoutEventListeners(cutout) {
-    // Apply listeners to the hit region instead of the image
-    cutout.hitRegion.addEventListener('mousedown', (e) => {
+    cutout.element.addEventListener('mousedown', (e) => {
       setActiveCutout(cutout);
       
       const rect = cutout.element.getBoundingClientRect();
@@ -165,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
     });
     
-    cutout.hitRegion.addEventListener('wheel', (e) => {
+    cutout.element.addEventListener('wheel', (e) => {
       if (activeCutout === cutout) {
         e.preventDefault();
         
@@ -173,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cutout.scale *= scaleChange;
         
         updateCutoutTransform(cutout);
-        updateHitRegion(cutout);
       }
     });
   }
@@ -186,9 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
       activeCutout.element.style.left = `${left}px`;
       activeCutout.element.style.top = `${top}px`;
       activeCutout.element.style.transform = getTransformString(activeCutout);
-      
-      // Update hit region position when dragging
-      updateHitRegion(activeCutout);
     }
   });
   
@@ -202,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key.toLowerCase() === 'm') {
       activeCutout.isFlipped = !activeCutout.isFlipped;
       updateCutoutTransform(activeCutout);
-      updateHitRegion(activeCutout);
     } else if (e.key.toLowerCase() === 'w') {
       removeCutout(activeCutout);
     }
@@ -238,8 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     activeCutout = cutout;
     activeCutout.element.classList.add('active');
-    activeCutout.element.style.zIndex = lastZIndex;
-    activeCutout.hitRegion.style.zIndex = lastZIndex++;
+    activeCutout.element.style.zIndex = lastZIndex++;
   }
   
   function updateCutoutTransform(cutout) {
@@ -255,25 +195,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const index = cutouts.findIndex(c => c.id === cutout.id);
     if (index !== -1) {
       cutout.element.remove();
-      cutout.hitRegion.remove();
       cutouts.splice(index, 1);
       
       if (cutouts.length > 0) {
         setActiveCutout(cutouts[cutouts.length - 1]);
       } else {
         activeCutout = null;
-        // Reset the interactive region when all cutouts are removed
-        ipcRenderer.send('update-interactive-region', null);
         // Show instructions again when all cutouts are removed
         instructionsElement.style.display = 'block';
       }
     }
   }
-  
-  // Handle window resize events
-  window.addEventListener('resize', () => {
-    if (activeCutout) {
-      updateHitRegion(activeCutout);
-    }
-  });
 });
