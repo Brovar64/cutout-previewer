@@ -1,4 +1,4 @@
-const { ipcRenderer, remote } = require('electron');
+const { ipcRenderer } = require('electron');
 
 document.addEventListener('DOMContentLoaded', () => {
   const cutoutImage = document.getElementById('cutoutImage');
@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   let isDragging = false;
   let startX, startY;
-  let windowOffsetX, windowOffsetY;
   
   // Receive cutout data from main process
   ipcRenderer.on('set-cutout', (event, cutoutData) => {
@@ -48,35 +47,38 @@ document.addEventListener('DOMContentLoaded', () => {
     startX = e.clientX;
     startY = e.clientY;
     
-    // Get current window position
-    const currentWindow = remote.getCurrentWindow();
-    const winPos = currentWindow.getPosition();
-    windowOffsetX = winPos[0];
-    windowOffsetY = winPos[1];
-    
     e.preventDefault();
+    
+    // Tell the main process we're starting to drag
+    ipcRenderer.send('cutout-drag-start');
   });
   
   document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
     
-    // Calculate new window position
-    const currentWindow = remote.getCurrentWindow();
+    // Calculate movement delta
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     
-    currentWindow.setPosition(windowOffsetX + dx, windowOffsetY + dy);
+    // Send the movement to the main process
+    ipcRenderer.send('cutout-drag-move', { dx, dy });
+    
+    // Update starting point for next move
+    startX = e.clientX;
+    startY = e.clientY;
   });
   
   document.addEventListener('mouseup', () => {
-    isDragging = false;
+    if (isDragging) {
+      isDragging = false;
+      ipcRenderer.send('cutout-drag-end');
+    }
   });
   
   // Close window on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      const currentWindow = remote.getCurrentWindow();
-      currentWindow.close();
+      ipcRenderer.send('cutout-close');
     }
   });
   
