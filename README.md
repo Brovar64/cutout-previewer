@@ -4,9 +4,9 @@ A specialized desktop application built with Electron that allows users (primari
 
 ## Features
 
-- **Multiple Window System**
-  - Control window for managing cutouts and selecting folders
-  - Transparent preview window for displaying and manipulating cutouts
+- **Clean Single-Window Interface**
+  - Simple control window for selecting folders and managing cutouts
+  - Spawn separate windows for each cutout
 
 - **Folder Management**
   - Select folders containing PNG cutouts
@@ -14,31 +14,27 @@ A specialized desktop application built with Electron that allows users (primari
 
 - **Cutout Management**
   - Display thumbnails of available cutouts
-  - Add cutouts to the preview window with a click
-  - Support for multiple simultaneous cutouts
+  - Click on a cutout to spawn a dedicated transparent window
 
 - **Pixel-Perfect Dragging**
   - Detect transparent pixels in PNG images
   - Only allow dragging when clicking on non-transparent parts
   - Prevent accidental movement when clicking on transparent areas
-  - Enhanced with Electron's setIgnoreMouseEvents with region forwarding
 
-- **Image Manipulation**
-  - **Dragging**: Move cutouts by clicking and dragging non-transparent areas
-  - **Scaling**: Use mouse wheel to resize cutouts
-  - **Mirroring**: Press 'M' key to horizontally flip cutouts
-  - **Removal**: Press 'W' key to remove cutouts from screen
-  - **Z-indexing**: Automatically brings cutouts to front when clicked
+## Usage
+
+1. Launch the application
+2. Select a folder containing PNG images using the "Select PNG Folder" button
+3. Click on any cutout thumbnail to create a transparent window with that image
+4. Drag the cutout window by clicking and dragging on non-transparent parts of the image
+5. Press Escape to close a cutout window
 
 ## Technical Implementation
 
-The application uses advanced techniques to handle transparency:
-
-- Leverages Electron's `setIgnoreMouseEvents()` with `forward` option
-- Creates interactive hit regions that match non-transparent areas of PNGs
-- Updates interactive regions dynamically when dragging, scaling, or flipping
-- Uses canvas to detect transparent pixels in PNG images
-- Advanced region-based mouse event handling
+- Leverages Electron's transparent windows
+- Uses HTML5 Canvas API for transparency detection
+- Implements proper window management
+- Inter-Process Communication (IPC) for window coordination
 
 ## Development
 
