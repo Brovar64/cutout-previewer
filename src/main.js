@@ -7,6 +7,7 @@ const store = new Store();
 
 let mainWindow = null;
 const cutoutWindows = new Map(); // Keep track of cutout windows
+let activeDragWindow = null;
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -140,5 +141,36 @@ ipcMain.on('show-cutout', (event, cutout) => {
     cutoutWindow = createCutoutWindow(cutout.path, cutout.name);
   } else {
     cutoutWindow.focus();
+  }
+});
+
+// Handle cutout window dragging
+ipcMain.on('cutout-drag-start', (event) => {
+  activeDragWindow = BrowserWindow.fromWebContents(event.sender);
+});
+
+ipcMain.on('cutout-drag-move', (event, delta) => {
+  if (!activeDragWindow || activeDragWindow.isDestroyed()) return;
+  
+  const [x, y] = activeDragWindow.getPosition();
+  activeDragWindow.setPosition(x + delta.dx, y + delta.dy);
+});
+
+ipcMain.on('cutout-drag-end', () => {
+  activeDragWindow = null;
+});
+
+ipcMain.on('cutout-close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) {
+    win.close();
+  }
+});
+
+// Handle request for initial cutouts
+ipcMain.on('request-initial-cutouts', (event) => {
+  const lastFolder = store.get('lastFolder');
+  if (lastFolder) {
+    scanFolder(lastFolder);
   }
 });
