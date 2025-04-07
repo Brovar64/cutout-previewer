@@ -1,19 +1,18 @@
-const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
 
 const store = new Store();
 
-let controlWindow = null;
-let previewWindow = null;
-let cutouts = [];
+let mainWindow = null;
+const cutoutWindows = new Map(); // Keep track of cutout windows
 
-function createControlWindow() {
-  controlWindow = new BrowserWindow({
-    width: 400,
-    height: 600,
-    title: 'Cutout Previewer - Controls',
+function createMainWindow() {
+  mainWindow = new BrowserWindow({
+    width: 500,
+    height: 700,
+    title: 'Cutout Previewer',
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -21,21 +20,17 @@ function createControlWindow() {
     backgroundColor: '#222222'
   });
 
-  controlWindow.loadFile(path.join(__dirname, 'control.html'));
+  mainWindow.loadFile(path.join(__dirname, 'main.html'));
   
-  controlWindow.on('closed', () => {
+  mainWindow.on('closed', () => {
     app.quit();
   });
 }
 
-function createPreviewWindow() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  
-  previewWindow = new BrowserWindow({
-    width: Math.min(1000, width),
-    height: Math.min(800, height),
-    x: Math.floor(width * 0.1),  // Position to the right of control window
-    y: Math.floor(height * 0.1),
+function createCutoutWindow(cutoutPath, cutoutName) {
+  const cutoutWindow = new BrowserWindow({
+    width: 500,
+    height: 500,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -45,20 +40,29 @@ function createPreviewWindow() {
     }
   });
 
-  previewWindow.loadFile(path.join(__dirname, 'preview.html'));
+  cutoutWindow.loadFile(path.join(__dirname, 'cutout.html'));
   
-  // Don't set ignore mouse events initially so we can interact with the preview window
-  previewWindow.setIgnoreMouseEvents(false);
+  // When window is ready, send the cutout path
+  cutoutWindow.webContents.on('did-finish-load', () => {
+    cutoutWindow.webContents.send('set-cutout', { path: cutoutPath, name: cutoutName });
+  });
+  
+  // Store the window reference
+  cutoutWindows.set(cutoutPath, cutoutWindow);
+  
+  cutoutWindow.on('closed', () => {
+    cutoutWindows.delete(cutoutPath);
+  });
+  
+  return cutoutWindow;
 }
 
 app.whenReady().then(() => {
-  createControlWindow();
-  createPreviewWindow();
+  createMainWindow();
   
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createControlWindow();
-      createPreviewWindow();
+      createMainWindow();
     }
   });
   
@@ -76,7 +80,7 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.on('select-folder', async () => {
-  const result = await dialog.showOpenDialog(controlWindow, {
+  const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory']
   });
   
@@ -93,14 +97,14 @@ function scanFolder(folderPath) {
     
     if (!fs.existsSync(folderPath)) {
       console.error(`Folder does not exist: ${folderPath}`);
-      controlWindow.webContents.send('cutouts-updated', []);
+      mainWindow.webContents.send('cutouts-updated', []);
       return;
     }
     
     fs.readdir(folderPath, (err, files) => {
       if (err) {
         console.error(`Error reading folder: ${err.message}`);
-        controlWindow.webContents.send('cutouts-updated', []);
+        mainWindow.webContents.send('cutouts-updated', []);
         return;
       }
       
@@ -109,34 +113,32 @@ function scanFolder(folderPath) {
       const pngFiles = files.filter(file => file.toLowerCase().endsWith('.png'));
       console.log(`Found ${pngFiles.length} PNG files`);
       
-      cutouts = pngFiles.map(file => {
+      const cutouts = pngFiles.map(file => {
         return {
           name: file,
           path: path.join(folderPath, file)
         };
       });
       
-      if (controlWindow && !controlWindow.isDestroyed()) {
-        controlWindow.webContents.send('cutouts-updated', cutouts);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('cutouts-updated', cutouts);
       }
     });
   } catch (error) {
     console.error(`Unexpected error scanning folder: ${error.message}`);
-    if (controlWindow && !controlWindow.isDestroyed()) {
-      controlWindow.webContents.send('cutouts-updated', []);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('cutouts-updated', []);
     }
   }
 }
 
-ipcMain.on('add-cutout', (event, cutoutPath) => {
-  if (previewWindow && !previewWindow.isDestroyed()) {
-    previewWindow.webContents.send('add-cutout', cutoutPath);
-  }
-});
-
-// Handle request for initial cutouts
-ipcMain.on('request-initial-cutouts', (event) => {
-  if (cutouts.length > 0) {
-    event.sender.send('cutouts-updated', cutouts);
+ipcMain.on('show-cutout', (event, cutout) => {
+  // Check if we already have a window for this cutout
+  let cutoutWindow = cutoutWindows.get(cutout.path);
+  
+  if (!cutoutWindow || cutoutWindow.isDestroyed()) {
+    cutoutWindow = createCutoutWindow(cutout.path, cutout.name);
+  } else {
+    cutoutWindow.focus();
   }
 });
