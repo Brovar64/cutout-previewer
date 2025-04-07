@@ -1,0 +1,36 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+.preview-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.cutout {
+  position: absolute;
+  user-select: none;
+  transform-origin: center;
+}
+
+.cutout img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.cutout.active {
+  outline: 2px dotted rgba(255, 255, 255, 0.5);
+}
