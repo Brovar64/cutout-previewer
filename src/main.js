@@ -26,20 +26,6 @@ function createControlWindow() {
   controlWindow.on('closed', () => {
     app.quit();
   });
-  
-  // Prevent accidental closing
-  controlWindow.on('close', (e) => {
-    const choice = dialog.showMessageBoxSync(controlWindow, {
-      type: 'question',
-      buttons: ['Yes', 'No'],
-      title: 'Confirm',
-      message: 'Are you sure you want to quit?'
-    });
-    
-    if (choice === 1) {
-      e.preventDefault();
-    }
-  });
 }
 
 function createPreviewWindow() {
@@ -61,15 +47,8 @@ function createPreviewWindow() {
 
   previewWindow.loadFile(path.join(__dirname, 'preview.html'));
   
-  // Set ignore mouse events with forwarding
-  // This allows clicks to pass through transparent areas
-  // while still capturing events on non-transparent areas
-  previewWindow.setIgnoreMouseEvents(true, { forward: true });
-  
-  // Add visual indicator to preview window when loaded
-  previewWindow.webContents.on('did-finish-load', () => {
-    previewWindow.webContents.send('show-initial-instructions');
-  });
+  // Don't set ignore mouse events initially so we can interact with the preview window
+  previewWindow.setIgnoreMouseEvents(false);
 }
 
 app.whenReady().then(() => {
@@ -160,27 +139,4 @@ ipcMain.on('request-initial-cutouts', (event) => {
   if (cutouts.length > 0) {
     event.sender.send('cutouts-updated', cutouts);
   }
-});
-
-// Listen for interactive regions updates from the renderer
-ipcMain.on('update-interactive-region', (event, region) => {
-  if (!previewWindow || previewWindow.isDestroyed()) return;
-  
-  // If we receive an empty region, reset to click-through mode
-  if (!region || region.width === 0 || region.height === 0) {
-    previewWindow.setIgnoreMouseEvents(true, { forward: true });
-    return;
-  }
-  
-  // Otherwise, use the specified region
-  previewWindow.setIgnoreMouseEvents(true, { 
-    forward: true,
-    // Define the region where mouse events are not ignored
-    region: {
-      x: Math.floor(region.x),
-      y: Math.floor(region.y),
-      width: Math.ceil(region.width),
-      height: Math.ceil(region.height)
-    }
-  });
 });
