@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Cutout Previewer</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <div class="header">
+    <h1>Cutout Previewer</h1>
+    <button id="selectFolder">Select PNG Folder</button>
+  </div>
+  
+  <div class="cutout-list-container">
+    <div class="cutout-list-header">Available Cutouts</div>
+    <div class="cutout-list" id="cutoutList">
+      <div class="empty-state">
+        Select a folder containing PNG cutouts
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <div class="help">
+      <h3>Cutout Window Controls</h3>
+      <p>Click and drag non-transparent areas to move</p>
+      <p>Press 'Esc' to close cutout window</p>
+    </div>
+  </div>
+  
+  <script src="js/main.js"></script>
+</body>
+</html>
